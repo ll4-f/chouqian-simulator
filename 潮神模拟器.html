@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>短暂夺舍潮神 - 逐次抽签器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background: #ffffff;
+            color: #333333;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .title {
+            font-size: 32px;
+            color: #2d3748;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 16px;
+            color: #718096;
+        }
+        .draw-area {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .current-draw {
+            font-size: 20px;
+            color: #2d3748;
+            margin-bottom: 20px;
+            min-height: 28px;
+        }
+        .draw-btn {
+            background: #4299e1;
+            color: white;
+            border: none;
+            font-size: 18px;
+            padding: 12px 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .draw-btn:hover {
+            background: #3182ce;
+            transform: translateY(-2px);
+        }
+        .draw-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result-area {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+        .group-card {
+            background: #fefefe;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .group-title {
+            font-size: 20px;
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #4299e1;
+        }
+        .team-item {
+            font-size: 15px;
+            color: #4a5568;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .team-item:last-child {
+            border-bottom: none;
+        }
+        
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            .result-area {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .title {
+                font-size: 26px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">短暂夺舍潮神</div>
+        </div>
+
+        <div class="draw-area">
+            <div class="current-draw" id="currentDraw">准备抽签：即将抽取 A1</div>
+            <button class="draw-btn" id="drawBtn" onclick="drawNextTeam()">抽取下一个队伍</button>
+        </div>
+
+        <div class="result-area">
+            <!-- A组 -->
+            <div class="group-card">
+                <div class="group-title">A组</div>
+                <div id="groupA"></div>
+            </div>
+            <!-- B组 -->
+            <div class="group-card">
+                <div class="group-title">B组</div>
+                <div id="groupB"></div>
+            </div>
+            <!-- C组 -->
+            <div class="group-card">
+                <div class="group-title">C组</div>
+                <div id="groupC"></div>
+            </div>
+            <!-- D组 -->
+            <div class="group-card">
+                <div class="group-title">D组</div>
+                <div id="groupD"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// 参赛队伍名单（已更新为最新版）
+const allTeams = [
+    "WBG", "DFM", "AR", "TE", "RC", 
+    "GG", "AXIZ", "Xteam", "Wolves", "Gr", 
+    "Omin", "PRR", "FPX.ZQ", "FL", "ACT", 
+    "MRC", "RT", "Lx", "B4U", "ZATE"
+];
+
+// 全局变量
+let remainingTeams = [...allTeams]; // 剩余待抽队伍
+let drawIndex = 0; // 抽签顺序索引
+const groupOrder = ['A', 'B', 'C', 'D']; // 分组顺序
+const groupCounts = { A: 0, B: 0, C: 0, D: 0 }; // 各组已抽数量
+
+// 初始化：打乱剩余队伍顺序（不放回）
+shuffleArray(remainingTeams);
+
+// 随机打乱数组（Fisher-Yates 算法）
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+// 抽取下一个队伍
+function drawNextTeam() {
+    // 检查是否抽完所有队伍
+    if (remainingTeams.length === 0) {
+        document.getElementById('currentDraw').textContent = "抽签完成！所有队伍已分配完毕";
+        document.getElementById('drawBtn').disabled = true;
+        return;
+    }
+
+    // 计算当前该抽哪个组
+    const currentGroup = groupOrder[drawIndex % 4];
+    const currentPosition = Math.floor(drawIndex / 4) + 1; // A1/A2/A3...
+    const displayText = `${currentGroup}${currentPosition}`;
+
+    // 随机抽取一个队伍
+    const randomIndex = Math.floor(Math.random() * remainingTeams.length);
+    const selectedTeam = remainingTeams.splice(randomIndex, 1)[0];
+
+    // 更新该组计数和展示
+    groupCounts[currentGroup]++;
+    const groupDom = document.getElementById(`group${currentGroup}`);
+    const teamItem = document.createElement('div');
+    teamItem.className = 'team-item';
+    teamItem.textContent = `${displayText}：${selectedTeam}`;
+    groupDom.appendChild(teamItem);
+
+    // 更新提示文本
+    document.getElementById('currentDraw').textContent = `已抽取 ${displayText}：${selectedTeam}`;
+
+    // 计算下一个要抽的位置
+    drawIndex++;
+    if (remainingTeams.length > 0) {
+        const nextGroup = groupOrder[drawIndex % 4];
+        const nextPosition = Math.floor(drawIndex / 4) + 1;
+        document.getElementById('currentDraw').textContent += ` | 下一个：${nextGroup}${nextPosition}`;
+    } else {
+        document.getElementById('currentDraw').textContent = `抽签完成！所有20支队伍已分配`;
+        document.getElementById('drawBtn').disabled = true;
+    }
+}
+</script>
+</body>
+</html>
